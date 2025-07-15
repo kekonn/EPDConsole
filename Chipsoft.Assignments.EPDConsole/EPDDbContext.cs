@@ -35,8 +35,8 @@ namespace Chipsoft.Assignments.EPDConsole
             
             var appointmentModel = modelBuilder.Entity<Appointment>();
             appointmentModel.HasKey(a => a.Id);
-            appointmentModel.HasOne(a => a.Patient);
-            appointmentModel.HasOne(a => a.Doctor);
+            appointmentModel.HasOne(a => a.Patient).WithMany(p => p.Appointments);
+            appointmentModel.HasOne(a => a.Doctor).WithMany(d => d.Appointments);
         }
     }
 }

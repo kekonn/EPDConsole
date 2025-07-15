@@ -1,5 +1,10 @@
-﻿namespace Chipsoft.Assignments.EPDConsole
+﻿using System.Runtime.CompilerServices;
+using Chipsoft.Assignments.EPDConsole.Models;
+
+namespace Chipsoft.Assignments.EPDConsole
 {
+    [assembly:InternalsVisibleTo("Chipsoft.Assignments.EPDConsole.Tests")]
+    
     public class Program
     {
         //Don't create EF migrations, use the reset db option
@@ -7,12 +12,35 @@
 
         private static void AddPatient()
         {
-            //Do action
-            //return to show menu again.
+            Console.WriteLine("Add new patient\n----------");
+            // Query patient data
+            var name = ConsoleUtils.ReadRequiredString("Patient name: ");
+            var insz = ConsoleUtils.ReadRequiredString("INSZ: ");
+            Console.Write("Patient address (single line, use commas): ");
+            var address = ConsoleUtils.ReadRequiredString("Address: ");
+            var telephone = ConsoleUtils.ReadRequiredString("Telephone: ");
+            
+            var patient = new Patient
+            {
+                Name = name,
+                Address = address,
+                TelephoneNumber = telephone,
+                INSZ = insz,
+            };
+
+            // Save data
+            using var dbContext = new EPDDbContext();
+            dbContext.Patients.Add(patient);
+            dbContext.SaveChanges();
+        }
+        
+        private static void DeletePatient()
+        {
         }
 
         private static void ShowAppointment()
         {
+            
         }
 
         private static void AddAppointment()
@@ -26,12 +54,7 @@
         private static void AddPhysician()
         {
         }
-
-        private static void DeletePatient()
-        {
-        }
-
-
+        
         #region FreeCodeForAssignment
         static void Main(string[] args)
         {

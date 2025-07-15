@@ -5,6 +5,13 @@ VisualStudioVersion = 17.3.32819.101
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chipsoft.Assignments.EPDConsole", "Chipsoft.Assignments.EPDConsole\Chipsoft.Assignments.EPDConsole.csproj", "{C3E36DFE-5F45-40C4-BCF8-CEACF7987B54}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chipsoft.Assignments.EPDConsole.Tests", "Chipsoft.Assignments.EPDConsole.Tests\Chipsoft.Assignments.EPDConsole.Tests.csproj", "{07B8D0C1-83A3-44EB-A875-3E3959F0DABF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{5DA4AC14-CF50-40C6-A7EB-C3F4E011A2C6}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +22,10 @@ Global
 		{C3E36DFE-5F45-40C4-BCF8-CEACF7987B54}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C3E36DFE-5F45-40C4-BCF8-CEACF7987B54}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C3E36DFE-5F45-40C4-BCF8-CEACF7987B54}.Release|Any CPU.Build.0 = Release|Any CPU
+		{07B8D0C1-83A3-44EB-A875-3E3959F0DABF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{07B8D0C1-83A3-44EB-A875-3E3959F0DABF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{07B8D0C1-83A3-44EB-A875-3E3959F0DABF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{07B8D0C1-83A3-44EB-A875-3E3959F0DABF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
