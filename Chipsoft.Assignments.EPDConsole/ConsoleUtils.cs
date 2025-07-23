@@ -19,4 +19,16 @@ public static class ConsoleUtils
                 .Validate(i => !string.IsNullOrWhiteSpace(i), "This field is required")
         );
     }
+
+    /// <summary>
+    /// Prompts for a valid INSZ number.
+    /// </summary>
+    /// <returns></returns>
+    public static string ReadRequiredInsz()
+    {
+        var InszPrompt = new TextPrompt<string>("INSZ: ")
+            .Validate(SsnValidator.IsValid, "Please enter a valid INSZ");
+        
+        return SsnValidator.CleanInsz(AnsiConsole.Prompt(InszPrompt));
+    }
 }

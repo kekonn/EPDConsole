@@ -15,7 +15,7 @@ namespace Chipsoft.Assignments.EPDConsole
     {
         private const string? DateFormat = "dd/MM/yy";
 
-        private const string? TimeFormat = "hh:mm";
+        private const string? TimeFormat = "HH:mm";
 
         private const int ChoicePageSize = 10;
         //Don't create EF migrations, use the reset db option
@@ -26,7 +26,7 @@ namespace Chipsoft.Assignments.EPDConsole
             Console.Write(new Rule("Voeg nieuwe patient toe"));
             // Query patient data
             var name = ConsoleUtils.ReadRequiredString("Naam patient: ");
-            var insz = ConsoleUtils.ReadRequiredString("INSZ: ");
+            var insz = ConsoleUtils.ReadRequiredInsz();
             var address = ConsoleUtils.ReadRequiredString("Adres (alles op 1 lijn, met komma's): ");
             var telephone = ConsoleUtils.ReadRequiredString("Telefoonnummer: ");
             
@@ -40,6 +40,13 @@ namespace Chipsoft.Assignments.EPDConsole
 
             // Save data
             using var dbContext = new EPDDbContext();
+
+            if (dbContext.Patients.Find(insz) != null)
+            {
+                Console.MarkupLineInterpolated($"[red]Er bestaat al een patient met INSZ {insz}.[/]");
+                return;
+            }
+            
             dbContext.Patients.Add(patient);
             dbContext.SaveChanges();
             Console.MarkupLineInterpolated($"{Emoji.Known.CheckMark} Patient {patient} werd toegevoegd.");
@@ -63,7 +70,7 @@ namespace Chipsoft.Assignments.EPDConsole
             var confirmation = Console.Confirm($"Bent u zeker dat u patient {patientToDelete} wenst te verwijderen?", false);
 
             if (!confirmation) return;
-            
+
             dbContext.Patients.Remove(patientToDelete);
             dbContext.SaveChanges();
             
@@ -89,13 +96,47 @@ namespace Chipsoft.Assignments.EPDConsole
             }
             
             // construct table
+            var appointmentTable = BuildAppointmentsTable(futureAppointments);
+            
+            Console.Write(appointmentTable);
+
+            var choice = (AppointmentMenu)Enum.Parse(typeof(AppointmentMenu),Console.Prompt(new SelectionPrompt<string>()
+                .Title("Kies een optie")
+                .AddChoices(Enum.GetNames(typeof(AppointmentMenu)))
+            ));
+
+            switch (choice)
+            {
+                case AppointmentMenu.ShowPatientAppointments:
+                    ShowPatientAppointments(dbContext.Appointments.ToArray());
+                    break;
+                case AppointmentMenu.ShowDoctorAppointments:
+                    ShowDoctorAppointments(dbContext.Appointments.ToArray());
+                    break;
+                default:
+                    return;
+            }
+        }
+
+        /// <summary>
+        /// Builds a table for the given list of appointments
+        /// </summary>
+        /// <param name="appointments">The appointment collection.</param>
+        /// <returns></returns>
+        private static Table BuildAppointmentsTable(ICollection<Appointment> appointments)
+        {
             var appointmentTable = new Table();
             appointmentTable.AddColumns("Datum", "Arts", "Start", "Einde", "Patient");
             appointmentTable.Border(TableBorder.DoubleEdge);
             appointmentTable.ShowRowSeparators();
+
+            if (appointments is null or { Count: 0 }) // don't try to build empty table
+            {
+                return appointmentTable;
+            }
             
             // fill table
-            foreach (var appointment in futureAppointments)
+            foreach (var appointment in appointments)
             {
                 appointmentTable.AddRow(appointment.Start.ToString(DateFormat), // datum
                     appointment.Doctor.Name, // arts
@@ -105,9 +146,39 @@ namespace Chipsoft.Assignments.EPDConsole
                 );
             }
             
-            Console.Write(appointmentTable);
+            return  appointmentTable;
+        }
+        
+        private static void ShowPatientAppointments(ICollection<Appointment> appointments)
+        {
+            if (appointments is null or { Count: 0 })
+                return;
 
+            var selectedPatient = SelectPatient(appointments.Select(a => a.Patient).DistinctBy(p => p.INSZ).ToArray());
+
+            var appointmentTable = BuildAppointmentsTable(selectedPatient?.Appointments);
+            Console.Write(appointmentTable);
+            
+            PressAnyKeyWait();
+        }
+
+        private static void PressAnyKeyWait()
+        {
+            Console.WriteLine("Press any key to continue");
             _ = System.Console.ReadKey();
+        }
+
+        private static void ShowDoctorAppointments(ICollection<Appointment> appointments)
+        {
+            if (appointments is null or { Count: 0 })
+                return;
+            
+            var selectedDoctor = SelectPhysician(appointments.Select(a => a.Doctor).DistinctBy(a => a.INSZ).ToArray());
+            
+            var appointmentTable = BuildAppointmentsTable(selectedDoctor?.Appointments);
+            Console.Write(appointmentTable);
+            
+            PressAnyKeyWait();
         }
 
         private static void AddAppointment()
@@ -124,28 +195,21 @@ namespace Chipsoft.Assignments.EPDConsole
                 ctx.Status("Patienten laden...");
                 dbContext.Patients.Load();
             });
+
+            if (!dbContext.Patients.Any() ||
+                !dbContext.Doctors.Any())
+            {
+                Console.MarkupLine("[red bold]Voeg minstens 1 arts en patient toe.[/]");
+            }
             
             Console.MarkupLine("[green]" + Emoji.Known.CheckMark + " Klaar![/]");
             Console.Write(new Rule("Afspraak maken"));
             
             Console.Write(new Rule("Stap 1: Patient zoeken"));
-            var patientPrompt = new SelectionPrompt<Patient>()
-                .Title("Selecteer de patient")
-                .EnableSearch()
-                .PageSize(ChoicePageSize)
-                .AddChoices(dbContext.Patients);
-
-            var selectedPatient = Console.Prompt(patientPrompt);
+            var selectedPatient = SelectPatient(dbContext.Patients.ToArray())!;
             
             Console.Write(new Rule("Stap 2: Arts zoeken"));
-            var doctorPrompt = new SelectionPrompt<Doctor>()
-                .Title("Kies een arts")
-                .EnableSearch()
-                .PageSize(ChoicePageSize)
-                .AddChoices(dbContext.Doctors)
-                .UseConverter(d => d.Name);
-            
-            var selectedDoctor = Console.Prompt(doctorPrompt);
+            var selectedDoctor = SelectPhysician(dbContext.Doctors.ToArray())!;
             
             Console.Write(new Rule("Stap 3: Datum en tijd kiezen"));
             var aptDate = Console.Prompt(new SelectionPrompt<DateTime>()
@@ -156,7 +220,7 @@ namespace Chipsoft.Assignments.EPDConsole
                 .UseConverter(d => d.ToString("ddd dd-MM"))
             );
 
-            var startDate = DateTimeUtils.RoundToNextInterval(DateTime.Now, TimeSpan.FromMinutes(15));
+            var startDate = DateTimeUtils.RoundToNextInterval(aptDate + DateTime.Now.TimeOfDay, TimeSpan.FromMinutes(15));
             var startChoices = DateTimeUtils.GetIncrementedDates(startDate, 40, TimeSpan.FromMinutes(15))
                 .Where(d => d.Date == startDate.Date);
 
@@ -191,6 +255,33 @@ namespace Chipsoft.Assignments.EPDConsole
             Console.MarkupLine("[green]"+ Emoji.Known.CheckMark + " Afspraak opgeslagen.[/]");
         }
 
+        private static Patient? SelectPatient(ICollection<Patient> patients)
+        {
+            if (patients is null or { Count: 0 }) return null;
+            
+            var patientPrompt = new SelectionPrompt<Patient>()
+                .Title("Selecteer de patient")
+                .EnableSearch()
+                .PageSize(ChoicePageSize)
+                .AddChoices(patients);
+
+            return Console.Prompt(patientPrompt);
+        }
+        
+        private static Doctor? SelectPhysician(ICollection<Doctor> doctors)
+        {
+            if (doctors is null or { Count: 0 }) return null;
+            
+            var doctorPrompt = new SelectionPrompt<Doctor>()
+                .Title("Kies een arts")
+                .EnableSearch()
+                .PageSize(ChoicePageSize)
+                .AddChoices(doctors)
+                .UseConverter(d => d.Name);
+            
+            return Console.Prompt(doctorPrompt);
+        }
+
         private static void DeletePhysician()
         {
             using var dbContext = new EPDDbContext();
@@ -223,7 +314,7 @@ namespace Chipsoft.Assignments.EPDConsole
         {
             Console.Write(new Rule("Voeg een nieuwe arts toe"));
             var name = ConsoleUtils.ReadRequiredString("Naam arts: ");
-            var insz = ConsoleUtils.ReadRequiredString("INSZ: ");
+            var insz = ConsoleUtils.ReadRequiredInsz();
 
             var doctor = new Doctor
             {
@@ -232,6 +323,13 @@ namespace Chipsoft.Assignments.EPDConsole
             };
             
             using var dbContext = new EPDDbContext();
+
+            if (dbContext.Doctors.Find(insz) != null)
+            {
+                Console.MarkupLineInterpolated($"[red]Een arts met INSZ {insz} bestaat al in het systeem.[/]");
+                return;
+            }
+            
             dbContext.Doctors.Add(doctor);
             dbContext.SaveChanges();
             
